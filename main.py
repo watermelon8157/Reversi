@@ -1,4 +1,4 @@
-import pygame, sys, random
+import pygame, sys, random, time
 from pygame.locals import *
 
 BACKGROUNDCOLOR = (255, 255, 255)
@@ -225,14 +225,12 @@ if __name__ == '__main__':
     windowSurface = pygame.display.set_mode((boardRect.width, boardRect.height))
     pygame.display.set_caption('黑白棋')
 
-    gameOver = False
-
     # 游戏主循环
     while True:
         for event in pygame.event.get():
             if event.type == QUIT:
                 terminate()
-            if gameOver is False and turn == 'player' and event.type == MOUSEBUTTONDOWN and event.button == 1:
+            if isGameOver(mainBoard) is False and turn == 'player' and event.type == MOUSEBUTTONDOWN and event.button == 1:
                 x, y = pygame.mouse.get_pos()
                 col = int((x - BOARDX) / CELLWIDTH)
                 row = int((y - BOARDY) / CELLHEIGHT)
@@ -243,7 +241,7 @@ if __name__ == '__main__':
         windowSurface.fill(BACKGROUNDCOLOR)
         windowSurface.blit(boardImage, boardRect, boardRect)
 
-        if gameOver is False and turn == 'computer':
+        if isGameOver(mainBoard) is False and turn == 'computer':
             x, y = getComputerMove(mainBoard, computerTile)
             makeMove(mainBoard, computerTile, x, y)
             savex, savey = x, y
