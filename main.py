@@ -1,34 +1,55 @@
 import pygame, sys, random, time
+from enum import Enum
 from pygame.locals import *
 
 BACKGROUNDCOLOR = (255, 255, 255)
 BLACK = (255, 255, 255)
+WHITE = (255, 255, 255)
 BLUE = (0, 0, 255)
 CELLWIDTH = 50
 CELLHEIGHT = 50
-PIECEWIDTH = 0
-PIECEHEIGHT = 0
+PIECEWIDTH = 40
+PIECEHEIGHT = 40
 BOARDX = 0
 BOARDY = 0
-FPS = 40
+FPS = 1000
+
+# load img
+boardImage = pygame.image.load('./img/board.png')
+boardRect = boardImage.get_rect()
+blackImage = pygame.image.load('./img/black.png')
+blackRect = blackImage.get_rect()
+whiteImage = pygame.image.load('./img/white.png')
+whiteRect = whiteImage.get_rect()
+
+gameOverStr = 'Game Over Score '
 
 
-# 退出
+class Role(Enum):
+    PLAYER = 'player'
+    COMPUTER = 'computer'
+
+
+class Side(Enum):
+    BLACK = 'black'
+    WHITE = 'white'
+
+
+# 離開
 def terminate():
     pygame.quit()
     sys.exit()
 
 
-# 重置棋盘
+# 重置棋盤
 def resetBoard(board):
-    # Starting pieces:
-    board[3][3] = 'black'
-    board[3][4] = 'white'
-    board[4][3] = 'white'
-    board[4][4] = 'black'
+    board[3][3] = Side.BLACK
+    board[3][4] = Side.WHITE
+    board[4][3] = Side.WHITE
+    board[4][4] = Side.BLACK
 
 
-# 开局时建立新棋盘
+# 棋盤
 def getNewBoard():
     board = []
     for i in range(8):
@@ -36,21 +57,21 @@ def getNewBoard():
     return board
 
 
-# 是否是合法走法
+# 是否為合法走法
 def isValidMove(board, tile, xstart, ystart):
-    # 如果该位置已经有棋子或者出界了，返回False
+    # 檢查該位置是否出界或已有棋子
     if not isOnBoard(xstart, ystart) or board[xstart][ystart] is not None:
         return False
 
-    # 临时将tile 放到指定的位置
+    # 臨時將tile放到指定的位置
     board[xstart][ystart] = tile
 
-    if tile == 'black':
-        otherTile = 'white'
+    if tile == Side.BLACK:
+        otherTile = Side.WHITE
     else:
-        otherTile = 'black'
+        otherTile = Side.BLACK
 
-    # 要被翻转的棋子
+    # 要被翻轉的棋子
     tilesToFlip = []
     for xdirection, ydirection in [[0, 1], [1, 1], [1, 0], [1, -1], [0, -1], [-1, -1], [-1, 0], [-1, 1]]:
         x, y = xstart, ystart
@@ -62,31 +83,31 @@ def isValidMove(board, tile, xstart, ystart):
             y += ydirection
             if not isOnBoard(x, y):
                 continue
-            # 一直走到出界或不是对方棋子的位置
+            # 一直走到出界或是不是對方棋子
             while board[x][y] == otherTile:
                 x += xdirection
                 y += ydirection
                 if not isOnBoard(x, y):
                     break
-            # 出界了，则没有棋子要翻转OXXXXX
+            # 出界了，則没有棋子要翻轉
             if not isOnBoard(x, y):
                 continue
-            # 是自己的棋子OXXXXXXO
+            # 是自己的棋子
             if board[x][y] == tile:
                 while True:
                     x -= xdirection
                     y -= ydirection
-                    # 回到了起点则结束
+                    # 回到了起點則结束
                     if x == xstart and y == ystart:
                         break
-                    # 需要翻转的棋子
+                    # 需要翻轉的棋子
                     tilesToFlip.append([x, y])
 
-    # 将前面临时放上的棋子去掉，即还原棋盘
+    # 將前面臨時放上的棋子去掉，即還原棋盤
     board[xstart][ystart] = None  # restore the empty space
 
-    # 没有要被翻转的棋子，则走法非法。翻转棋的规则。
-    if len(tilesToFlip) == 0:  # If no tiles were flipped, this is not a valid move.
+    # 没有要被翻轉的棋子，則走法非法
+    if len(tilesToFlip) == 0:
         return False
 
     return tilesToFlip
@@ -97,7 +118,7 @@ def isOnBoard(x, y):
     return 0 <= x <= 7 and 0 <= y <= 7
 
 
-# 获取可落子的位置
+# 獲取可落子的位置
 def getValidMoves(board, tile):
     validMoves = []
 
@@ -108,28 +129,28 @@ def getValidMoves(board, tile):
     return validMoves
 
 
-# 获取棋盘上黑白双方的棋子数
+# 獲取棋盤上雙方的棋子數
 def getScoreOfBoard(board):
     xscore = 0
     oscore = 0
     for x in range(8):
         for y in range(8):
-            if board[x][y] == 'black':
+            if board[x][y] == Side.BLACK:
                 xscore += 1
-            if board[x][y] == 'white':
+            if board[x][y] == Side.WHITE:
                 oscore += 1
-    return {'black': xscore, 'white': oscore}
+    return {Side.BLACK: xscore, Side.WHITE: oscore}
 
 
-# 谁先走
+# 決定先手後手
 def whoGoesFirst():
     if random.randint(0, 1) == 0:
-        return 'computer'
+        return Role.COMPUTER
     else:
-        return 'player'
+        return Role.PLAYER
 
 
-# 将一个tile棋子放到(xstart, ystart)
+# 將一個tile棋子放到(xstart, ystart)
 def makeMove(board, tile, xstart, ystart):
     tilesToFlip = isValidMove(board, tile, xstart, ystart)
 
@@ -142,7 +163,7 @@ def makeMove(board, tile, xstart, ystart):
     return True
 
 
-# 复制棋盘
+# 複製棋盤
 def getBoardCopy(board):
     dupeBoard = getNewBoard()
 
@@ -158,15 +179,15 @@ def isOnCorner(x, y):
     return (x == 0 and y == 0) or (x == 7 and y == 0) or (x == 0 and y == 7) or (x == 7 and y == 7)
 
 
-# 电脑走法，AI
+# AI
 def getComputerMove(board, computerTile):
-    # 获取所以合法走法
+    # 獲取所有合法走法
     possibleMoves = getValidMoves(board, computerTile)
 
-    # 打乱所有合法走法
+    # 打亂順序
     random.shuffle(possibleMoves)
 
-    # [x, y]在角上，则优先走，因为角上的不会被再次翻转
+    # [x, y]在角上，則優先走
     for x, y in possibleMoves:
         if isOnCorner(x, y):
             return [x, y]
@@ -175,7 +196,7 @@ def getComputerMove(board, computerTile):
     for x, y in possibleMoves:
         dupeBoard = getBoardCopy(board)
         makeMove(dupeBoard, computerTile, x, y)
-        # 按照分数选择走法，优先选择翻转后分数最多的走法
+        # 按照分數選擇走法，優先選擇翻轉後分數最多的走法
         score = getScoreOfBoard(dupeBoard)[computerTile]
         if score > bestScore:
             bestMove = [x, y]
@@ -183,93 +204,114 @@ def getComputerMove(board, computerTile):
     return bestMove
 
 
-# 是否游戏结束
+# 遊戲是否結束
 def isGameOver(board):
     for x in range(8):
         for y in range(8):
             if board[x][y] is None:
                 return False
+
+    if len(getValidMoves(board, Side.WHITE)) != 0 or len(getValidMoves(board, Side.BLACK)) != 0:
+        return False
     return True
+
+
+def drawBoard(board):
+    windowSurface.blit(boardImage, boardRect, boardRect)
+    for x in range(0, 8):
+        for y in range(0, 8):
+            rectDst = pygame.Rect(BOARDX + x * CELLWIDTH + 5, BOARDY + y * CELLHEIGHT + 5, PIECEWIDTH, PIECEHEIGHT)
+            if board[x][y] == Side.BLACK:
+                windowSurface.blit(blackImage, rectDst, blackRect)
+            elif board[x][y] == Side.WHITE:
+                windowSurface.blit(whiteImage, rectDst, whiteRect)
+
+def sideSelect():
+    # 先手
+    xSurf = BIGFONT.render('black', True, WHITE, BLUE)
+    xRect = xSurf.get_rect()
+    xRect.center = (int(400 / 2) - 60, int(400 / 2) + 40)
+
+    # 後手
+    oSurf = BIGFONT.render('white', True, WHITE, BLUE)
+    oRect = oSurf.get_rect()
+    oRect.center = (int(400 / 2) + 60, int(400 / 2) + 40)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                terminate()
+            if event.type == MOUSEBUTTONUP:
+                x, y = event.pos
+                if xRect.collidepoint((x, y)):
+                    return Side.BLACK
+                elif oRect.collidepoint((x, y)):
+                    return Side.WHITE
+        windowSurface.blit(xSurf, xRect)
+        windowSurface.blit(oSurf, oRect)
+        pygame.display.update()
+        mainClock.tick(FPS)
 
 
 if __name__ == '__main__':
     # 初始化
     pygame.init()
     mainClock = pygame.time.Clock()
-
-    # 加载图片
-    boardImage = pygame.image.load('./media/board.png')
-    boardRect = boardImage.get_rect()
-    blackImage = pygame.image.load('./media/black.png')
-    blackRect = blackImage.get_rect()
-    whiteImage = pygame.image.load('./media/white.png')
-    whiteRect = whiteImage.get_rect()
-
     basicFont = pygame.font.SysFont(None, 48)
-    gameoverStr = 'Game Over Score '
+    FONT = pygame.font.Font(None, 16)
+    BIGFONT = pygame.font.Font(None, 32)
 
     mainBoard = getNewBoard()
     resetBoard(mainBoard)
 
-    turn = whoGoesFirst()
-    if turn == 'player':
-        playerTile = 'black'
-        computerTile = 'white'
-    else:
-        playerTile = 'white'
-        computerTile = 'black'
-
-    print(turn)
-
-    # 设置窗口
+    # 設置窗口
     windowSurface = pygame.display.set_mode((boardRect.width, boardRect.height))
-    pygame.display.set_caption('黑白棋')
+    pygame.display.set_caption('Reversi')
 
-    # 游戏主循环
+    if sideSelect() == Side.BLACK:
+        turn = Role.PLAYER
+        playerTile = Side.BLACK
+        computerTile = Side.WHITE
+    else:
+        turn = Role.COMPUTER
+        playerTile = Side.WHITE
+        computerTile = Side.BLACK
+
+    # 遊戲主循環
     while True:
         for event in pygame.event.get():
             if event.type == QUIT:
                 terminate()
-            if isGameOver(mainBoard) is False and turn == 'player' and event.type == MOUSEBUTTONDOWN and event.button == 1:
-                x, y = pygame.mouse.get_pos()
-                col = int((x - BOARDX) / CELLWIDTH)
-                row = int((y - BOARDY) / CELLHEIGHT)
-                if makeMove(mainBoard, playerTile, col, row):
-                    if getValidMoves(mainBoard, computerTile) != []:
-                        turn = 'computer'
 
-        windowSurface.fill(BACKGROUNDCOLOR)
-        windowSurface.blit(boardImage, boardRect, boardRect)
+            if isGameOver(mainBoard):
+                drawBoard(mainBoard)
+                scorePlayer = getScoreOfBoard(mainBoard)[playerTile]
+                scoreComputer = getScoreOfBoard(mainBoard)[computerTile]
+                outputStr = gameOverStr + str(scorePlayer) + ":" + str(scoreComputer)
+                text = basicFont.render(outputStr, True, BLACK, BLUE)
+                textRect = text.get_rect()
+                textRect.centerx = windowSurface.get_rect().centerx
+                textRect.centery = windowSurface.get_rect().centery
+                windowSurface.blit(text, textRect)
 
-        if isGameOver(mainBoard) is False and turn == 'computer':
-            x, y = getComputerMove(mainBoard, computerTile)
-            makeMove(mainBoard, computerTile, x, y)
-            savex, savey = x, y
+            elif turn == Role.PLAYER:
+                if event.type == MOUSEBUTTONUP:
+                    x, y = event.pos
+                    col = int((x - BOARDX) / CELLWIDTH)
+                    row = int((y - BOARDY) / CELLHEIGHT)
+                    if makeMove(mainBoard, playerTile, col, row):
+                        if len(getValidMoves(mainBoard, computerTile)) != 0:
+                            turn = Role.COMPUTER
+                drawBoard(mainBoard)
 
-            # 玩家没有可行的走法了
-            if getValidMoves(mainBoard, playerTile) != []:
-                turn = 'player'
+            elif turn == Role.COMPUTER:
+                # pygame.time.wait(2000)
 
-        windowSurface.fill(BACKGROUNDCOLOR)
-        windowSurface.blit(boardImage, boardRect, boardRect)
-
-        for x in range(8):
-            for y in range(8):
-                rectDst = pygame.Rect(BOARDX + x * CELLWIDTH + 2, BOARDY + y * CELLHEIGHT + 2, PIECEWIDTH, PIECEHEIGHT)
-                if mainBoard[x][y] == 'black':
-                    windowSurface.blit(blackImage, rectDst, blackRect)
-                elif mainBoard[x][y] == 'white':
-                    windowSurface.blit(whiteImage, rectDst, whiteRect)
-
-        if isGameOver(mainBoard):
-            scorePlayer = getScoreOfBoard(mainBoard)[playerTile]
-            scoreComputer = getScoreOfBoard(mainBoard)[computerTile]
-            outputStr = gameoverStr + str(scorePlayer) + ":" + str(scoreComputer)
-            text = basicFont.render(outputStr, True, BLACK, BLUE)
-            textRect = text.get_rect()
-            textRect.centerx = windowSurface.get_rect().centerx
-            textRect.centery = windowSurface.get_rect().centery
-            windowSurface.blit(text, textRect)
+                col, row = getComputerMove(mainBoard, computerTile)
+                if makeMove(mainBoard, computerTile, col, row):
+                    if len(getValidMoves(mainBoard, playerTile)) != 0:
+                        turn = Role.PLAYER
+                drawBoard(mainBoard)
 
         pygame.display.update()
         mainClock.tick(FPS)
